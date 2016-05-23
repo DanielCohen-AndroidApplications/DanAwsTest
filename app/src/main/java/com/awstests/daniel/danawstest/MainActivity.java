@@ -1,8 +1,10 @@
 package com.awstests.daniel.danawstest;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -18,11 +20,13 @@ import com.amazonaws.auth.policy.conditions.StringCondition;
 import com.amazonaws.mobileconnectors.cognito.CognitoSyncManager;
 import com.amazonaws.mobileconnectors.cognito.Dataset;
 import com.amazonaws.mobileconnectors.cognito.DefaultSyncCallback;
+import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.*;
 import com.amazonaws.mobileconnectors.*;
 import com.amazonaws.services.dynamodbv2.model.*;
+
 
 import java.util.List;
 import java.util.Map;
@@ -34,11 +38,17 @@ public class MainActivity extends Activity {
     TextView textView;
     EditText editTextUserId, editTextSalary, editTextAge, editTextLocation;
     Button buttonSend, buttonReceive;
-    String inputUserId, outputUserId;
+    String inputName, outputUserId;
+    String inputSalary, inputAge;
     AmazonDynamoDB dynamoDB;
     PutItemRequest putItemRequest;
     Map<String,AttributeValue> mapRequest;
     AttributeValue attributeValue;
+    CognitoSyncManager syncClient;
+    Dataset dataset;
+    Music music;
+    DynamoDBMapper mapper;
+
 
 
     private CognitoCachingCredentialsProvider credentialsProvider;
@@ -259,7 +269,6 @@ public class MainActivity extends Activity {
 
 
 
-
         textView=(TextView) findViewById(R.id.textView);
         editTextUserId=(EditText) findViewById(R.id.editTextUserId);
         editTextSalary=(EditText) findViewById(R.id.editTextSalary);
@@ -267,29 +276,25 @@ public class MainActivity extends Activity {
         editTextLocation=(EditText) findViewById(R.id.editTextLocation);
         buttonReceive=(Button) findViewById(R.id.buttonReceive);
         buttonSend=(Button) findViewById(R.id.buttonSend);
-
         credentialsProvider = new CognitoCachingCredentialsProvider(
                 getApplicationContext(),
                 "us-east-1:ceae0626-1082-4759-85c3-fae01752889a", // Identity Pool ID
                 Regions.US_EAST_1 // Region
         );
-        CognitoSyncManager syncClient = new CognitoSyncManager(
+        syncClient = new CognitoSyncManager(
                 getApplicationContext(),
                 Regions.US_EAST_1, // Region
                 credentialsProvider);
+        AmazonDynamoDBClient ddbClient = new AmazonDynamoDBClient(credentialsProvider);
+        mapper = new DynamoDBMapper(ddbClient);
+        music=new Music();
 
-// Create a record in a dataset and synchronize with the server
-        Dataset dataset = syncClient.openOrCreateDataset("myDataset");
-        dataset.put("name", "dan");
-        dataset.put("age", "26");
-        dataset.synchronize(new DefaultSyncCallback() {
-            @Override
-            public void onSuccess(Dataset dataset, List newRecords) {
-                //Your handler code here
-            }
-        });
+
     }
     public void sendString(View view){
+        inputName= editTextUserId.getText().toString();
+        inputAge=editTextAge.getText().toString();
+        inputSalary=editTextSalary.getText().toString();
         new dataTask().execute();
     }
     public void receiveString(View view){
@@ -300,37 +305,39 @@ public class MainActivity extends Activity {
 
         @Override
         protected String doInBackground(String... params) {
+            // Create a record in a dataset and synchronize with the server
+            dataset = syncClient.openOrCreateDataset(inputName);
+
+
+            dataset.put("Name", inputName);
+            dataset.put("Age", inputAge+"");
+            dataset.put("Salary", inputSalary+"");
+
+            dataset.synchronize(new DefaultSyncCallback() {
+                @Override
+                public void onSuccess(Dataset dataset, List newRecords) {
+                    //Your handler code here
+                }
+            });
             try {
-                putItemRequest=new PutItemRequest();
-                putItemRequest.setTableName("Music");
 
-                attributeValue=new AttributeValue();
-                attributeValue.setS("GD");
-                mapRequest.put("Artist", attributeValue);
-                putItemRequest.setItem(mapRequest);
+                music.setArtist("Grateful Dead");
+                music.setSongTitle("Dark Star");
+                mapper.save(music);
+                
+
+//                putItemRequest=new PutItemRequest();
+//                putItemRequest.setTableName("Music");
+//
+//                attributeValue=new AttributeValue();
+//                attributeValue.setS("GD");
+//                mapRequest.put("Artist", attributeValue);
+//                putItemRequest.setItem(mapRequest);
             }catch (Exception e){
-
+                Log.v("_dan", e.getMessage());
             }
-//            try {
-//// Initialize the Cognito Sync client
-////                CognitoSyncManager syncClient = new CognitoSyncManager(
-////                        getApplicationContext(),
-////                        Regions.US_EAST_1, // Region
-////                        credentialsProvider);
-////
-////// Create a record in a dataset and synchronize with the server
-////                Dataset dataset = syncClient.openOrCreateDataset("myDataset");
-////                dataset.put("myKey", "myValue");
-////                dataset.synchronize(new DefaultSyncCallback() {
-////                    @Override
-////                    public void onSuccess(Dataset dataset, List newRecords) {
-////                        //Your handler code here
-////                    }
-////                });
-//            }catch (Exception e){
-//                isError=true;
-//                error=e;
-//            }
+
+
             return "Executed";
         }
     }
