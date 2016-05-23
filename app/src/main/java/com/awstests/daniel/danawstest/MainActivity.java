@@ -2,8 +2,10 @@ package com.awstests.daniel.danawstest;
 
 import android.app.Activity;
 import android.content.ClipData;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.res.ResourcesCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -21,13 +23,18 @@ import com.amazonaws.mobileconnectors.cognito.CognitoSyncManager;
 import com.amazonaws.mobileconnectors.cognito.Dataset;
 import com.amazonaws.mobileconnectors.cognito.DefaultSyncCallback;
 import com.amazonaws.mobileconnectors.dynamodbv2.dynamodbmapper.DynamoDBMapper;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.*;
 import com.amazonaws.mobileconnectors.*;
 import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
 
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -48,8 +55,8 @@ public class MainActivity extends Activity {
     Dataset dataset;
     Music music;
     DynamoDBMapper mapper;
-
-
+    AmazonS3 s3;
+    TransferUtility transferUtility;
 
     private CognitoCachingCredentialsProvider credentialsProvider;
 
@@ -288,8 +295,12 @@ public class MainActivity extends Activity {
         AmazonDynamoDBClient ddbClient = new AmazonDynamoDBClient(credentialsProvider);
         mapper = new DynamoDBMapper(ddbClient);
         music=new Music();
+        // Create an S3 client
+                s3 = new AmazonS3Client(credentialsProvider);
 
-
+        // Set the region of your S3 bucket
+        s3.setRegion(Region.getRegion(Regions.US_EAST_1));
+        transferUtility = new TransferUtility(s3, getApplicationContext());
     }
     public void sendString(View view){
         inputName= editTextUserId.getText().toString();
@@ -305,7 +316,7 @@ public class MainActivity extends Activity {
 
         @Override
         protected String doInBackground(String... params) {
-            // Create a record in a dataset and synchronize with the server
+            // COGNITO: Create a record in a dataset and synchronize with the server
             dataset = syncClient.openOrCreateDataset(inputName);
 
 
@@ -320,12 +331,19 @@ public class MainActivity extends Activity {
                 }
             });
             try {
-
+                //DYNAMO: insert attribute into "Music" Table.
                 music.setArtist("Grateful Dead");
                 music.setSongTitle("Dark Star");
                 mapper.save(music);
-                
 
+                //S3: upload pic to "hhproperties" S3 Bucket
+                Uri pic1_path = Uri.parse("android.resource://"+getPackageName()+"/"+R.raw.pic1);
+                File pic1 = new File(pic1_path.toString());
+                TransferObserver observer = transferUtility.upload(
+                        "hhproperties",     /* The bucket to upload to */
+                        "pic1",    /* The key for the uploaded object */
+                        pic1);     /* The file where the data to upload exists */
+                observer.refresh();
 //                putItemRequest=new PutItemRequest();
 //                putItemRequest.setTableName("Music");
 //
