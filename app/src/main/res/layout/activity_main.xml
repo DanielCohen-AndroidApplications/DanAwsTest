@@ -40,15 +40,25 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Send"
+        android:text="Set up Id"
         android:id="@+id/buttonSend"
         android:layout_gravity="center_horizontal"
-        android:onClick="sendString"/>
+        android:onClick="cognitoDynamo"/>
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Receive"
+        android:text="s3"
         android:id="@+id/buttonReceive"
         android:layout_gravity="center_horizontal"
-        android:onClick="receiveString"/>
+        />
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/imgView"
+        />
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/iv_pic"
+        />
 </LinearLayout>
